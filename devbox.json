@@ -1,0 +1,17 @@
+{
+    "packages": [
+        "rustup@latest",
+    ],
+    "shell": {
+        "init_hook": [
+            "rustup default nightly",
+            "cargo fetch"
+        ],
+        "scripts": {
+            "test": "cargo test -- --show-output",
+            "server": "cargo run --bin server",
+            "start" : "cargo run",
+            "build-docs": "cargo doc"
+        }
+    }
+}
