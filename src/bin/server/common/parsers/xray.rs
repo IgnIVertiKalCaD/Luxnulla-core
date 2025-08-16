@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
+use serde_json::to_string;
 use std::collections::HashMap;
 use url::Url;
+
+use crate::http::services::model::xray_config::{RealitySettings, User};
 
 #[derive(Debug)]
 enum ParseError {
@@ -39,19 +42,9 @@ pub enum ProxyConfig {
 }
 
 impl ProxyConfig {
-    pub fn id(&self) -> Option<&str> {
+    pub fn user(&self) -> Option<&User> {
         match self {
-            ProxyConfig::Vless(value) => Some(&value.id),
-            ProxyConfig::Vmess(value) => Some(&value.id),
-            ProxyConfig::Trojan(value) => Some(&value.id),
-            ProxyConfig::Shadowsocks(_) => None,
-        }
-    }
-
-    pub fn password(&self) -> Option<&str> {
-        match self {
-            ProxyConfig::Trojan(value) => Some(&value.password),
-            ProxyConfig::Shadowsocks(value) => Some(&value.password),
+            ProxyConfig::Vless(value) => Some(&value.user),
             _ => None,
         }
     }
@@ -85,32 +78,16 @@ impl ProxyConfig {
 
     pub fn name(&self) -> Option<&str> {
         match self {
-            ProxyConfig::Vless(value) => value.name.as_deref(),
+            ProxyConfig::Vless(_) => None,
             ProxyConfig::Vmess(value) => value.name.as_deref(),
             ProxyConfig::Trojan(value) => value.name.as_deref(),
             ProxyConfig::Shadowsocks(value) => value.name.as_deref(),
         }
     }
 
-    pub fn extras(&self) -> &HashMap<String, String> {
-        match self {
-            ProxyConfig::Vless(value) => &value.extras,
-            ProxyConfig::Vmess(value) => &value.extras,
-            ProxyConfig::Trojan(value) => &value.extras,
-            ProxyConfig::Shadowsocks(value) => &value.extras,
-        }
-    }
-
     pub fn security(&self) -> Option<&str> {
         match self {
             ProxyConfig::Vless(value) => value.security.as_deref(),
-            _ => None,
-        }
-    }
-
-    pub fn encryption(&self) -> Option<&str> {
-        match self {
-            ProxyConfig::Vless(value) => value.encryption.as_deref(),
             _ => None,
         }
     }
@@ -140,52 +117,9 @@ impl ProxyConfig {
         }
     }
 
-    pub fn tls(&self) -> Option<bool> {
+    pub fn reality_settings(&self) -> Option<&RealitySettings> {
         match self {
-            ProxyConfig::Vless(value) => Some(value.tls),
-            ProxyConfig::Vmess(value) => Some(value.tls),
-            _ => None,
-        }
-    }
-
-    pub fn aid(&self) -> Option<u32> {
-        match self {
-            ProxyConfig::Vmess(value) => Some(value.aid),
-            _ => None,
-        }
-    }
-
-    pub fn type_field(&self) -> Option<&str> {
-        match self {
-            ProxyConfig::Vmess(value) => value.type_field.as_deref(),
-            _ => None,
-        }
-    }
-
-    pub fn method(&self) -> Option<&str> {
-        match self {
-            ProxyConfig::Shadowsocks(value) => Some(&value.method),
-            _ => None,
-        }
-    }
-
-    pub fn sni(&self) -> Option<&str> {
-        match self {
-            ProxyConfig::Trojan(value) => value.sni.as_deref(),
-            _ => None,
-        }
-    }
-
-    pub fn ws_path(&self) -> Option<&str> {
-        match self {
-            ProxyConfig::Trojan(value) => value.ws_path.as_deref(),
-            _ => None,
-        }
-    }
-
-    pub fn allow_insecure(&self) -> Option<bool> {
-        match self {
-            ProxyConfig::Trojan(value) => Some(value.allow_insecure),
+            ProxyConfig::Vless(value) => value.reality.as_ref(),
             _ => None,
         }
     }
@@ -193,22 +127,21 @@ impl ProxyConfig {
 
 #[derive(Debug, Deserialize)]
 struct Vless {
-    id: String,
+    name_client: Option<String>,
+    user: User,
     address: String,
     port: u16,
     security: Option<String>,
-    encryption: Option<String>,
     network: String,
     path: Option<String>,
     host: Option<String>,
-    tls: bool,
-    name: Option<String>,
-    extras: HashMap<String, String>,
+
+    reality: Option<RealitySettings>,
 }
 
 #[derive(Debug, Deserialize)]
 struct Vmess {
-    id: String,
+    user_id: String,
     address: String,
     port: u16,
     aid: u32,
@@ -216,8 +149,8 @@ struct Vmess {
     type_field: Option<String>,
     host: Option<String>,
     path: Option<String>,
-    tls: bool,
     name: Option<String>,
+    name_client: Option<String>,
     // raw parameters store
     extras: HashMap<String, String>,
 }
@@ -234,7 +167,7 @@ struct Shadowsocks {
 
 #[derive(Debug, Deserialize)]
 struct Trojan {
-    id: String,
+    user_id: String,
     password: String,
     address: String,
     port: u16,
@@ -246,6 +179,24 @@ struct Trojan {
     extras: HashMap<String, String>,
 }
 
+// example vless_grpc config
+// vless://
+// d8737518-5251-4e25-a653-8c625ef18b8f
+// @24.120.32.42:2040
+// ?security=reality
+// &type=grpc
+// &sni=unpkg.com
+// &sid=e0969a6f81b52865
+// &pbk=FPIcpZmVrQcqkF1vR_aBnLw_Uu4CNhuuKkrRtKpzRHg
+//
+// <=== extra ===>
+// &headerType=
+// &serviceName=
+// &authority=
+// &mode=gun
+// &fp=chrome
+// #%F0%9F%9A%80%20Marz%20%28igni_laptop_grpc_reality_flow%29%20%5BVLESS%20-%20grpc%5D
+
 impl Parser for Vless {
     fn parse(url: &Url) -> Result<Self, ParseError> {
         let query: HashMap<_, _> = url.query_pairs().into_owned().collect();
@@ -253,9 +204,9 @@ impl Parser for Vless {
         extras.remove("encryption");
         extras.remove("security");
 
-        let id = url.username().to_string();
-        if id.is_empty() {
-            return Err(ParseError::FieldMissing("id".to_string()));
+        let user_id = url.username().to_string();
+        if user_id.is_empty() {
+            return Err(ParseError::FieldMissing("user_id".to_string()));
         }
 
         let address = url
@@ -269,24 +220,52 @@ impl Parser for Vless {
 
         let network = query
             .get("type")
-            .ok_or(ParseError::FieldMissing("network".to_string()))?
+            .ok_or(ParseError::FieldMissing("type".to_string()))?
             .to_string();
 
-        Ok(Vless {
-            id,
+        let name_client = Some("aboba".to_string());
+
+        let reality_settings: RealitySettings = RealitySettings {
+            fingerprint: Some(
+                query
+                    .get("fp")
+                    .ok_or(ParseError::FieldMissing("fp".to_string()))?
+                    .to_string(),
+            ),
+            public_key: query
+                .get("pbk")
+                .ok_or(ParseError::FieldMissing("pbk".to_string()))?
+                .to_string(),
+            server_name: query
+                .get("sni")
+                .ok_or(ParseError::FieldMissing("sni".to_string()))?
+                .to_string(),
+            short_id: query
+                .get("sid")
+                .ok_or(ParseError::FieldMissing("sid".to_string()))?
+                .to_string(),
+        };
+
+        let config = Vless {
+            user: User {
+                id: Some(user_id),
+                encryption: query.get("encryption").cloned(),
+            },
             address,
             port,
             network,
+            name_client,
             security: query.get("security").cloned(),
-            encryption: query.get("encryption").cloned(),
             path: query.get("path").cloned(),
             host: query.get("host").cloned(),
 
-            name: url.fragment().map(|s| s.to_string()),
-            extras,
+            reality: Some(reality_settings),
+        };
 
-            tls: query.get("security").map(|s| s == "tls").unwrap_or(false),
-        })
+        println!("{:#?}", url);
+        println!("{:#?}", config);
+
+        Ok(config)
     }
 }
 
@@ -302,16 +281,16 @@ fn parse_line(url: Url) -> Result<ProxyConfig, String> {
 pub fn work(payload: &str) -> Result<Vec<ProxyConfig>, ()> {
     let mut configs = Vec::new();
 
-    for line in payload.lines().take(2) {
+    for line in payload.lines() {
         let Ok(url) = Url::parse(line) else {
-            println!("Is not valid url {}", line);
+            eprintln!("Is not valid url {}", line);
 
             continue;
         };
 
         match parse_line(url) {
             Ok(url) => configs.push(url),
-            Err(err) => println!("failed to parse line: {}", err),
+            Err(err) => eprintln!("failed to parse line: {}", err),
         }
     }
 

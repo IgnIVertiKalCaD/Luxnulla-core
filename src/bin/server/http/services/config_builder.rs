@@ -1,0 +1,27 @@
+use crate::{
+    common::parsers::xray::ProxyConfig,
+    http::services::model::xray_config::{
+        GRPCSettings, RealitySettings, Settings, StreamSettings, User, XrayClientConfig,
+    },
+};
+
+impl XrayClientConfig {
+    pub fn new(config: &ProxyConfig) -> Self {
+        XrayClientConfig {
+            protocol: config.protocol().to_string(),
+            settings: Settings {
+                address: config.address().to_string(),
+                port: config.port(),
+                users: vec![config.user().unwrap().clone()],
+            },
+            stream: StreamSettings {
+                reality: config.reality_settings().cloned(),
+                network: config.network().map(|network| network.to_string()),
+                security: config
+                    .security()
+                    .map(|security| security.to_string())
+                    .unwrap(),
+            },
+        }
+    }
+}

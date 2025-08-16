@@ -16,15 +16,15 @@ async fn root() -> &'static str {
 
 #[axum::debug_handler]
 async fn get_parsed_xray_subs() -> Json<Value> {
-    const URL: &str = "https://rage.ignivkd.dev/sub/aWduaV9sYXB0b3BfZ3JwY19yZWFsaXR5X2Zsb3csMTc1NTI2MzY0NA9rbdf65_Eo";
+    const URL: &str = "https://raw.githubusercontent.com/barry-far/V2ray-Config/refs/heads/main/Splitted-By-Protocol/vless.txt";
 
     let configs = services::subscription::get_configs(URL).await;
 
     let configs = configs
         .unwrap()
         .iter()
-        .map(|config| http::services::sub_builder::Subscribe::new(config))
-        .collect::<Vec<http::services::sub_builder::Subscribe>>();
+        .map(|config| http::services::model::xray_config::XrayClientConfig::new(config))
+        .collect::<Vec<_>>();
 
     Json(json!(configs))
 }
