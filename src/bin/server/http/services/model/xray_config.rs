@@ -11,8 +11,8 @@ pub struct RealitySettings {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GRPCSettings {
-    pub serviceName: String,
-    pub multiMode: String,
+    pub service_name: String,
+    pub multi_mode: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,7 +38,8 @@ pub struct StreamSettings {
     // grpc_settings: Option<GRPCSettings>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reality: Option<RealitySettings>,
-    pub security: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub security: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,4 +47,6 @@ pub struct XrayClientConfig {
     pub protocol: String,
     pub settings: Settings,
     pub stream: StreamSettings,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name_client: Option<String>,
 }

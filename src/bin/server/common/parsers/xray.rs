@@ -78,7 +78,7 @@ impl ProxyConfig {
 
     pub fn name(&self) -> Option<&str> {
         match self {
-            ProxyConfig::Vless(_) => None,
+            ProxyConfig::Vless(value) => value.name_client.as_deref(),
             ProxyConfig::Vmess(value) => value.name.as_deref(),
             ProxyConfig::Trojan(value) => value.name.as_deref(),
             ProxyConfig::Shadowsocks(value) => value.name.as_deref(),
@@ -127,15 +127,14 @@ impl ProxyConfig {
 
 #[derive(Debug, Deserialize)]
 struct Vless {
-    name_client: Option<String>,
     user: User,
     address: String,
     port: u16,
-    security: Option<String>,
     network: String,
+    name_client: Option<String>,
+    security: Option<String>,
     path: Option<String>,
     host: Option<String>,
-
     reality: Option<RealitySettings>,
 }
 
@@ -200,9 +199,6 @@ struct Trojan {
 impl Parser for Vless {
     fn parse(url: &Url) -> Result<Self, ParseError> {
         let query: HashMap<_, _> = url.query_pairs().into_owned().collect();
-        let mut extras = query.clone();
-        extras.remove("encryption");
-        extras.remove("security");
 
         let user_id = url.username().to_string();
         if user_id.is_empty() {
@@ -223,27 +219,26 @@ impl Parser for Vless {
             .ok_or(ParseError::FieldMissing("type".to_string()))?
             .to_string();
 
-        let name_client = Some("aboba".to_string());
+        // Опциональные поля - не вызываем ошибку если отсутствуют
+        let name_client = url.fragment().map(|s| s.to_string());
 
-        let reality_settings: RealitySettings = RealitySettings {
-            fingerprint: Some(
-                query
-                    .get("fp")
-                    .ok_or(ParseError::FieldMissing("fp".to_string()))?
-                    .to_string(),
-            ),
-            public_key: query
-                .get("pbk")
-                .ok_or(ParseError::FieldMissing("pbk".to_string()))?
-                .to_string(),
-            server_name: query
-                .get("sni")
-                .ok_or(ParseError::FieldMissing("sni".to_string()))?
-                .to_string(),
-            short_id: query
-                .get("sid")
-                .ok_or(ParseError::FieldMissing("sid".to_string()))?
-                .to_string(),
+        // RealitySettings создаем только если есть основные необходимые поля
+        let reality_settings = if let (Some(pbk), Some(sni), Some(sid)) =
+            (query.get("pbk"), query.get("sni"), query.get("sid"))
+        {
+            Some(RealitySettings {
+                fingerprint: Some(
+                    query
+                        .get("fp")
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "chrome".to_string()),
+                ),
+                public_key: pbk.to_string(),
+                server_name: sni.to_string(),
+                short_id: sid.to_string(),
+            })
+        } else {
+            None
         };
 
         let config = Vless {
@@ -258,8 +253,7 @@ impl Parser for Vless {
             security: query.get("security").cloned(),
             path: query.get("path").cloned(),
             host: query.get("host").cloned(),
-
-            reality: Some(reality_settings),
+            reality: reality_settings,
         };
 
         println!("{:#?}", url);
