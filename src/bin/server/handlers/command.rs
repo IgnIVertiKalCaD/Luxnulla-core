@@ -1,4 +1,4 @@
-use crate::services::{ConfigService, StatusService, XrayService};
+use crate::services::{xray::XrayService, ConfigService, StatusService};
 use luxnulla::{CommandRequest, CommandResponse, ErrorCommandResponse, OkCommandResponse};
 use std::path::PathBuf;
 

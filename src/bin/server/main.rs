@@ -1,10 +1,8 @@
 use dirs::config_dir;
 use eyre::OptionExt;
-
 use luxnulla::{CONFIG_DIR, SOCKET_NAME, XRAY_CONFIG_FILE};
 use std::{fs, path::PathBuf, sync::Arc};
 use tokio::net::UnixListener;
-
 mod client_handler;
 mod common;
 mod handlers;
@@ -13,8 +11,6 @@ mod services;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let _ = http::server::init().await;
-
     let config_dir_path = config_dir()
         .ok_or_eyre("cannot get a dir")?
         .join(CONFIG_DIR);
@@ -36,6 +32,8 @@ async fn main() -> eyre::Result<()> {
 
     let listener = UnixListener::bind(&sock_path)?;
     println!("Luxnulla listening on {:?}", sock_path);
+
+    let _ = http::server::init();
 
     loop {
         let app_clone = application.clone();

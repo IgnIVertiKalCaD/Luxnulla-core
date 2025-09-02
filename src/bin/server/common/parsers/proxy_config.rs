@@ -1,5 +1,5 @@
+use base64::{Engine, prelude::BASE64_STANDARD};
 use serde::{Deserialize, Serialize};
-use serde_json::to_string;
 use std::collections::HashMap;
 use url::Url;
 
@@ -33,7 +33,7 @@ where
     fn parse(url: &Url) -> Result<Self, ParseError>;
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum ProxyConfig {
     Vmess(Vmess),
     Vless(Vless),
@@ -125,7 +125,7 @@ impl ProxyConfig {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Vless {
     user: User,
     address: String,
@@ -138,7 +138,7 @@ struct Vless {
     reality: Option<RealitySettings>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Vmess {
     user_id: String,
     address: String,
@@ -154,7 +154,7 @@ struct Vmess {
     extras: HashMap<String, String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Shadowsocks {
     method: String,
     password: String,
@@ -164,7 +164,7 @@ struct Shadowsocks {
     extras: HashMap<String, String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Trojan {
     user_id: String,
     password: String,
@@ -219,10 +219,8 @@ impl Parser for Vless {
             .ok_or(ParseError::FieldMissing("type".to_string()))?
             .to_string();
 
-        // Опциональные поля - не вызываем ошибку если отсутствуют
         let name_client = url.fragment().map(|s| s.to_string());
 
-        // RealitySettings создаем только если есть основные необходимые поля
         let reality_settings = if let (Some(pbk), Some(sni), Some(sid)) =
             (query.get("pbk"), query.get("sni"), query.get("sid"))
         {
@@ -256,11 +254,29 @@ impl Parser for Vless {
             reality: reality_settings,
         };
 
-        println!("{:#?}", url);
-        println!("{:#?}", config);
-
         Ok(config)
     }
+}
+
+pub fn decode_config_from_base64(payload: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let body = payload.trim();
+
+    let content = match BASE64_STANDARD.decode(body) {
+        Ok(decoded_bytes) => {
+            println!("INFO: Content detected as Base64. Decoding...");
+            String::from_utf8(decoded_bytes)?
+        }
+        Err(_) => {
+            println!("INFO: Content detected as plain text.");
+            body.to_string()
+        }
+    };
+
+    Ok(content)
+}
+
+pub fn is_supported_scheme(line: &str) -> bool {
+    return line.starts_with("vless") || line.starts_with("vmess") || line.starts_with("ss") || line.starts_with("trojan");
 }
 
 fn parse_line(url: Url) -> Result<ProxyConfig, String> {

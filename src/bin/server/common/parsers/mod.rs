@@ -1,2 +1,1 @@
-pub mod subscribe;
-pub mod xray;
+pub mod proxy_config;

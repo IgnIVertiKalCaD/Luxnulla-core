@@ -1,7 +1,7 @@
 use crate::{
-    common::parsers::xray::ProxyConfig,
+    common::parsers::proxy_config::ProxyConfig,
     http::services::model::xray_config::{
-        GRPCSettings, RealitySettings, Settings, StreamSettings, User, XrayClientConfig,
+        Settings, StreamSettings, XrayClientConfig,
     },
 };
 

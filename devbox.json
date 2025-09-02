@@ -1,6 +1,6 @@
 {
     "packages": [
-        "rustup@latest",
+        "rustup@latest"
     ],
     "shell": {
         "init_hook": [
@@ -8,10 +8,7 @@
             "cargo fetch"
         ],
         "scripts": {
-            "test": "cargo test -- --show-output",
-            "server": "cargo run --bin server",
-            "start" : "cargo run",
-            "build-docs": "cargo doc"
+            "server": "cargo run --bin server"
         }
     }
 }
