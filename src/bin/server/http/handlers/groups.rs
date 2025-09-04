@@ -2,24 +2,12 @@ use crate::{
     common::parsers::proxy_config::{self, ProxyConfig},
     services::{Group, StorageService, xray::fetcher::get_configs},
 };
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{extract::{Path, State}, http::StatusCode, response::IntoResponse, Json};
 use base64::{Engine, prelude::BASE64_STANDARD};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::Arc;
 use url::Url;
-
-#[derive(Deserialize)]
-pub struct CreateGroup {
-    name: String,
-    config: String,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct CreateGroupResponse {
-    name: String,
-    configs: Value,
-}
 
 pub enum ConfigType {
     RAW,
@@ -97,12 +85,24 @@ async fn process_config(payload: &str) -> Result<Vec<ProxyConfig>, std::io::Erro
     }
 }
 
+#[derive(Deserialize)]
+pub struct CreateGroup {
+    name: String,
+    payload: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct CreateGroupResponse {
+    name: String,
+    configs: Value,
+}
+
 #[axum::debug_handler]
 pub async fn create_group(
     State(storage): State<Arc<StorageService>>,
-    Json(payload): Json<CreateGroup>,
+    Json(req): Json<CreateGroup>,
 ) -> impl IntoResponse {
-    let decoded_config = match process_config(&payload.config).await {
+    let decoded_config = match process_config(&req.payload).await {
         Ok(config) => config,
         Err(e) => {
             return (
@@ -116,13 +116,13 @@ pub async fn create_group(
         }
     };
 
-    let group = Group::new(payload.name.clone(), json!(decoded_config));
+    let group = Group::new(req.name.clone(), json!(decoded_config));
 
     match storage.store_group(group) {
         Ok(()) => (
             StatusCode::CREATED,
             Json(CreateGroupResponse {
-                name: payload.name,
+                name: req.name,
                 configs: json!(decoded_config),
             }),
         )
@@ -149,6 +149,66 @@ pub async fn get_groups(State(storage): State<Arc<StorageService>>) -> impl Into
             })),
         )
             .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Failed to retrieve groups",
+                "details": e.to_string()
+            })),
+        )
+            .into_response(),
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct UpdateGroup {
+    name: String,
+    payload: Value,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct UpdateGroupResponse {
+    name: String,
+    configs: Value,
+}
+
+#[axum::debug_handler]
+pub async fn update_group(
+    State(storage): State<Arc<StorageService>>,
+    Json(req): Json<UpdateGroup>,
+) -> impl IntoResponse {
+    let new_configs = serde_json::to_value(req.payload).unwrap();
+
+    let group = Group::new(req.name.clone(), new_configs.clone());
+
+    match storage.update_group_config(group) {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(UpdateGroupResponse {
+                name: req.name,
+                configs: new_configs,
+            }),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Failed to retrieve groups",
+                "details": e.to_string()
+            })),
+        )
+            .into_response(),
+    }
+}
+
+//add if group is exist
+#[axum::debug_handler]
+pub async fn delete_group(
+    State(storage): State<Arc<StorageService>>,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    match storage.delete_group(&name) {
+        Ok(_) => (StatusCode::OK).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({

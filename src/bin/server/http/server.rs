@@ -1,12 +1,12 @@
 use std::sync::Arc;
 use axum::Json;
-use axum::{Router, routing::get};
+use axum::{Router, routing::{get, post, put, delete}};
 use reqwest::Method;
 use serde_json::{Value, json};
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::http::handlers::groups::{create_group, get_groups};
+use crate::http::handlers::groups::{create_group, delete_group, get_groups, update_group};
 use crate::http::services::model::xray_config::XrayClientConfig;
 use crate::services::{self};
 
@@ -38,13 +38,15 @@ pub fn init() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
         let cors_layer = CorsLayer::new()
             .allow_origin(Any)
-            .allow_methods([Method::GET, Method::POST])
+            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
             .allow_headers(Any);
 
         let app = Router::new()
             .route("/", get(root))
             .route("/configs", get(get_parsed_xray_configs))
-            .route("/groups", get(get_groups).post(create_group))
+            .route("/groups", get(get_groups))
+            .route("/group", post(create_group).put(update_group))
+            .route("/group/{name}", delete(delete_group))
             .with_state(storage_service_state)
             .layer(ServiceBuilder::new().layer(cors_layer));
 

@@ -12,7 +12,6 @@ pub const EDITOR_NAME: &str = "zeditor";
 pub enum CommandRequest {
     EditXray,
     EditLuxnulla,
-    Start,
     Status,
     Restart,
 }
