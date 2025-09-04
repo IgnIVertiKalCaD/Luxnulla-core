@@ -53,6 +53,54 @@
           "store_path": "/nix/store/4z7n3dky3wmx7130rid6c67ra1ipqhn1-rustup-1.28.2"
         }
       }
+    },
+    "xray@latest": {
+      "last_modified": "2025-08-08T08:05:48Z",
+      "resolved": "github:NixOS/nixpkgs/a3f3e3f2c983e957af6b07a1db98bafd1f87b7a1#xray",
+      "source": "devbox-search",
+      "version": "25.8.3",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/82lrpf61jdpyhxcli0w57c01bsxvl4gx-xray-25.8.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/82lrpf61jdpyhxcli0w57c01bsxvl4gx-xray-25.8.3"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ksgn1drnc2rka2sihgf93kyyrg6l2hn0-xray-25.8.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ksgn1drnc2rka2sihgf93kyyrg6l2hn0-xray-25.8.3"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/547gkc5p6g2j5f4sgjpwnkqrrlsklvj0-xray-25.8.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/547gkc5p6g2j5f4sgjpwnkqrrlsklvj0-xray-25.8.3"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/yf8xciq0x0i8f9h52dw3iy4mjc95v6kv-xray-25.8.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/yf8xciq0x0i8f9h52dw3iy4mjc95v6kv-xray-25.8.3"
+        }
+      }
     }
   }
 }

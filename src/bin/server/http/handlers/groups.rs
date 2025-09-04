@@ -2,7 +2,12 @@ use crate::{
     common::parsers::proxy_config::{self, ProxyConfig},
     services::{Group, StorageService, xray::fetcher::get_configs},
 };
-use axum::{extract::{Path, State}, http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    Json,
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+};
 use base64::{Engine, prelude::BASE64_STANDARD};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -34,13 +39,12 @@ async fn process_config(payload: &str) -> Result<Vec<ProxyConfig>, std::io::Erro
     match determine_config_type(payload)? {
         ConfigType::RAW => {
             if let Ok(_) = Url::parse(&payload) {
-                if let Ok(work_result) = proxy_config::work(&payload) {
-                    Ok(work_result)
-                } else {
-                    Err(std::io::Error::new(
+                match proxy_config::work(&payload) {
+                    Ok(work_result) => Ok(work_result),
+                    Err(_) => Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
                         "Failed to perform work with config",
-                    ))
+                    )),
                 }
             } else {
                 Err(std::io::Error::new(
@@ -54,13 +58,12 @@ async fn process_config(payload: &str) -> Result<Vec<ProxyConfig>, std::io::Erro
 
             if let Ok(config) = raw_config {
                 if let Ok(_) = Url::parse(&config) {
-                    if let Ok(work_result) = proxy_config::work(&config) {
-                        Ok(work_result)
-                    } else {
-                        Err(std::io::Error::new(
+                    match proxy_config::work(&config) {
+                        Ok(work_result) => Ok(work_result),
+                        Err(_) => Err(std::io::Error::new(
                             std::io::ErrorKind::Other,
                             "Failed to perform work with config",
-                        ))
+                        )),
                     }
                 } else {
                     Err(std::io::Error::new(
@@ -201,7 +204,7 @@ pub async fn update_group(
     }
 }
 
-//add if group is exist
+//todo add if group is exist
 #[axum::debug_handler]
 pub async fn delete_group(
     State(storage): State<Arc<StorageService>>,
@@ -209,6 +212,24 @@ pub async fn delete_group(
 ) -> impl IntoResponse {
     match storage.delete_group(&name) {
         Ok(_) => (StatusCode::OK).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": "Failed to retrieve groups",
+                "details": e.to_string()
+            })),
+        )
+            .into_response(),
+    }
+}
+
+#[axum::debug_handler]
+pub async fn get_group_by_name(
+    State(storage): State<Arc<StorageService>>,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    match storage.get_group(&name) {
+        Ok(group) => (StatusCode::OK, Json(json!(group))).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({

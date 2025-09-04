@@ -1,12 +1,21 @@
-use std::sync::Arc;
 use axum::Json;
-use axum::{Router, routing::{get, post, put, delete}};
+use axum::{
+    Router,
+    routing::{delete, get, post, put},
+};
+use dirs::config_dir;
+use eyre::OptionExt;
+use luxnulla::{CONFIG_DIR, XRAY_CONFIG_FILE};
 use reqwest::Method;
 use serde_json::{Value, json};
+use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::http::handlers::groups::{create_group, delete_group, get_groups, update_group};
+use crate::http::handlers::groups::{
+    create_group, delete_group, get_group_by_name, get_groups, update_group,
+};
+use crate::http::handlers::xray::{get_xray_status, toggle_xray};
 use crate::http::services::model::xray_config::XrayClientConfig;
 use crate::services::{self};
 
@@ -46,7 +55,9 @@ pub fn init() -> tokio::task::JoinHandle<()> {
             .route("/configs", get(get_parsed_xray_configs))
             .route("/groups", get(get_groups))
             .route("/group", post(create_group).put(update_group))
-            .route("/group/{name}", delete(delete_group))
+            .route("/group/{name}", get(get_group_by_name).delete(delete_group))
+            .route("/xray", get(get_xray_status))
+            .route("/xray/{action}", post(toggle_xray))
             .with_state(storage_service_state)
             .layer(ServiceBuilder::new().layer(cors_layer));
 

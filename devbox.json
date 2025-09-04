@@ -1,14 +1,15 @@
 {
-    "packages": [
-        "rustup@latest"
+  "packages": [
+    "rustup@latest",
+    "xray@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      "rustup default nightly",
+      "cargo fetch"
     ],
-    "shell": {
-        "init_hook": [
-            "rustup default nightly",
-            "cargo fetch"
-        ],
-        "scripts": {
-            "server": "cargo run --bin server"
-        }
+    "scripts": {
+      "server": "cargo run --bin server"
     }
+  }
 }
